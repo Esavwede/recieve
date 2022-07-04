@@ -15,13 +15,16 @@ const verifyDestinationAccount = async function(req, res, next)
         {
             try 
             {
-                    const account_details = { account_bank: req.body.account_bank, account_number: req.body.account_number } 
+                    const { account_bank, account_number } = req.body 
+                    const account_details = { account_bank , account_number} 
+
+
                     const response = await flw.Misc.verify_Account(account_details)
 
                     if( response.status === 'success' )
                     {
                         logger.info(' Bank account details valid ')
-                        return res.status(200).json({ "success": true, data })
+                        return res.status(200).json({ "success": true, data: response.data })
                     }
 
                         return res.status(400).json({ "success": false, "msg":" Check Account details and try again "})
@@ -36,6 +39,6 @@ const verifyDestinationAccount = async function(req, res, next)
 
 
 
-        
+
 
 module.exports = { verifyDestinationAccount }
