@@ -7,9 +7,10 @@ const transfer = require('../controllers/Transfer/transfer')
 
 module.exports = (app)=> {
 
-    router.post('/resolve/accountDetails', transfer.verifyDestinationAccount )
-    router.post('/transactionFee', transfer.getTransactionFee ) 
-    router.post('/transactionRate', transfer.getTransactionRate ) 
+    router.post('/', transfer.transfer ) 
+    router.post('/accountDetails', transfer.verifyDestinationAccount )
+    router.post('/fee', transfer.getTransactionFee ) 
+    router.post('/rate', transfer.getTransactionRate ) 
 
     app.use('/api/v1/transfer',router)
 }

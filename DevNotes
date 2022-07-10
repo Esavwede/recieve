@@ -18,3 +18,4 @@ Design better endpoint names
 Currency Should be in floats 
 Set Session Expiration for payments and application 
 Optimize database design for fast search 
+Super test and check all money transactions for accuracy 
