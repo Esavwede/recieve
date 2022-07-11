@@ -13,9 +13,28 @@ const flw = new flutterwave( process.env.FLUTTERWAVE_PUBLIC_KEY, process.env.FLU
 
 // Models 
 const MerchantBalance = require('../../models/MerchantBalance') 
-
+const Transfer = require('../../models/Transfer') 
 
 // Functions 
+
+const saveTransfer = async function(tranferDetails)
+                    {
+                        try 
+                        {
+                            const newTransfer = new Transfer(transferDetails) 
+                            const savedTransfer = await newTransfer.save() 
+    
+                            if( savedTransfer ){ return { success: true, savedTransfer } }
+                          
+                        }
+                        catch(err)
+                        {
+                            logger.error(err) 
+                            return { success: false, savedTransfer: null } 
+                        }
+                       
+                    }
+
 
 const runTransfer = async function(transferDetails)
             {
@@ -79,6 +98,29 @@ const getMerchantBalance = async function(merchant_id,source_currency)
                               return sourceCurrencyBalance 
             }
 
+
+const deductFromMerchantBalance = async function(merchant_id, currency, amount, merchant_balance)
+            {
+                        try 
+                        {
+
+                            amount = parseFloat(amount)
+                            merchant_balance = parseFloat(merchant_balance) 
+
+                            const deductAmount = merchant_balance - amount 
+
+                            const arrayFilters = { arrayFilters:[{ "elemX.currency": currency }] }
+                            const update = { $set:{ "wallets.$[elemX].balance": deductAmount } } 
+                            const balance_updated = await MerchantBalance.updateOne({ merchant_id },update,arrayFilters)
+                            
+                            return balance_updated 
+                        }
+                        catch(err)
+                        {
+                            logger.error(err) 
+                            return false 
+                        }
+            }
 
 
 const generateTransactionReference = function(len)
@@ -221,8 +263,6 @@ const getTransactionRate = async function(req, res, next)
                     });
 
 
-
-                    
                     console.dir( response.data ) 
 
 
@@ -253,6 +293,8 @@ const transfer = async function(req, res, next)
            
                 const merchant_id = '62cb40005db61fb61b246905' 
 
+                
+                const currentTranferDetails = {  source_currency, account_bank, account_number, amount, narration, currency}
 
                 // Validate Account Details Schema 
                 const transferDetails = 
@@ -266,6 +308,7 @@ const transfer = async function(req, res, next)
                     callback_url: "https://webhook.site/b3e505b0-fe02-430e-a538-22bbbce8ce0d",
                     debit_currency: "NGN"
                 }
+
 
                 logger.info(' Transfer Details Created ')
 
@@ -302,7 +345,9 @@ const transfer = async function(req, res, next)
                                 else 
                                 {
                                     // check status 
-                                    const transferStatus = transferResult.data.status 
+                                    var mock_transfer_status = 'NEW'
+                                    const transferStatus = mock_transfer_status || transferResult.data.status
+
                                     console.log(` Transfer Status : ${ transferStatus }`)
                                     
 
@@ -315,20 +360,52 @@ const transfer = async function(req, res, next)
 
                                         case 'NEW': 
                                                         logger.info(' Transfer created ')
+                                                        currentTranferDetails.status = 'NEW'
+
+                                                        const transferDetailsCreated = await saveTransfer(currentTranferDetails)
                                                         // track transaction
-                                                        return res.status(200).json({ success: true, msg:" new transfer created"})
+
+                                                        if( transferDetailsCreated.success )
+                                                        {
+                                                            return res.status(200).json({ success: true, msg:" new transfer created"})
+                                                        }
+                                                            return res.status(200).json({ success: false, msg:"error occured while saving new transfer details "})
+                                                        
                                                       
 
                                         case 'PENDING':
                                                         logger.info(' Transfer is being processed ')
-                                                        // track transaction 
-                                                        return res.status(200).json({ success: true, msg:" transfer is being processed "})
+                                                        currentTranferDetails.status = 'PENDING'
+
+                                                        const pending_transferDetailsCreated = await saveTransfer(currentTranferDetails)
+                                                        // track transaction
+
+                                                        if( pending_transferDetailsCreated.success )
+                                                        {
+                                                            return res.status(200).json({ success: true, msg:" new transfer is processing "})
+                                                        }
+                                                            return res.status(200).json({ success: false, msg:"error occured while saving new transfer details "})
                                                     
 
                                         case 'SUCCESSFUL':
                                                         logger.info(' Transfer successful ')
+                                                        currentTranferDetails.status = 'SUCCESSFUL'
+                                                        
+                                                        const success_transferDetailsCreated = await saveTransfer(currentTranferDetails)
+                                                        // track transaction
+
+                                                        if( success_transferDetailsCreated.success )
+                                                        {
+                                                            res.status(200).json({ success: true, msg:" transfer complete "})
+                                                        }
+                                                            res.status(200).json({ success: false, msg:"error occured while saving new transfer details "})
                                                         // deduct from balance 
-                                                        return res.status(200).json({ success: true, msg:" transfer successful"})
+                                                        
+                                                       const balanceUpdated =  await deductFromMerchantBalance(merchant_id, source_currency, total_amount, merchant_balance)
+                                                       if( balanceUpdated )
+                                                       {
+                                                            return res.status(200).json({ "success":  true, "msg":" transfer successful and balance updated "})
+                                                       } 
 
                                         default:
                                                         logger.info(' Unknown Transfer Status ')
