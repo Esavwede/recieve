@@ -12,6 +12,12 @@ const TransferSchema = new Schema
                 required: true, 
                 trim: true
             },
+            source_amount:
+            {
+                type: String,
+                required: true, 
+                trim: true 
+            },
             currency:
             {
                 type: String, 

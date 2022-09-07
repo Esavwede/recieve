@@ -1,3 +1,6 @@
+// Mock Redis 
+global.store = { count: 0 } 
+
 var logger = require('./health/logging/index') // Winston Logger 
 var createError = require('http-errors');
 var express = require('express');

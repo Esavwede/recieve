@@ -1,17 +1,31 @@
-// Utils 
-const logger = require('../../health/logging/index') // Logger 
-const { serverErrorResponse } = require('../../utils/response/res_500') // Error Response For server 
-const { checkUserExists, authenticateUser } = require('../../utils/functions/user/user.function') // User utils 
-const { sendMail } = require('../../utils/email/sendmail') // Mail Sender 
-const { hashPassword }  = require('../../utils/functions/password.function') // Password Hashing 
-const { getMailBody }  = require('../../utils/email/getMailBody')// Signup Email 
-const crypto = require('crypto');// User to create verification string 
 
+
+// Utils 
+    const logger = require('../../health/logging/index') // Logger 
+
+    // User 
+    const { checkUserExists, authenticateUser } = require('../../utils/functions/user/user.function') 
+
+    // --Mail 
+    const { sendMail } = require('../../utils/email/sendmail') 
+    const { hashPassword }  = require('../../utils/functions/password.function') 
+    const { getMailBody }  = require('../../utils/email/getMailBody')
+    const crypto = require('crypto');
+        
+    //---Response 
+    const { serverErrorResponse } = require('../../utils/response/res_500') // Error Response For server 
+    const { reqBodyErr} = require('../../utils/response/validation/err_response')
 
 
 // models 
 const User = require('../../models/User')
 const MerchantBalance = require('../../models/MerchantBalance') 
+
+
+// Validation Schemas 
+const signupSchema = require('../../validation/Joi_Schemas/signup')
+const signinSchema = require('../../validation/Joi_Schemas/signin')
+const Joi = require('joi')
 
 
 const sendNewUserMail = async function(firstname,email,verificationLink)
@@ -35,12 +49,16 @@ const sendNewUserMail = async function(firstname,email,verificationLink)
 }
 
 
-
-
 const signup = async function(req, res, next)
         {
             try
             {
+
+
+                // Validate request body 
+                await signupSchema.validateAsync(req.body) 
+
+
                 const { firstname, lastname, email, password } = req.body 
 
 
@@ -83,14 +101,16 @@ const signup = async function(req, res, next)
             }
             catch(err)
             {
+
+                // JOI ERROR ? 
+                if( err.isJoi ){ return reqBodyErr(err.message,res)}
+
+                
                 logger.error(err)
                 return serverErrorResponse(res," Server encountered error during signup ")
             }
         }
 
-
-
-    
 const verifyEmail = async function(req, res, next)
         {
             try 
@@ -118,14 +138,12 @@ const verifyEmail = async function(req, res, next)
             }
         }
 
-
         const signin = async function(req, res, next)
         {
                 try 
                 {
 
-
-                    logger.info(` User on ${ req.url }`)
+                    await signinSchema.validateAsync(req.body) 
 
                     const { email, password } = req.body 
 
@@ -152,6 +170,8 @@ const verifyEmail = async function(req, res, next)
                 }
                 catch(err)
                 {
+
+                    if( err.isJoi ){ return reqBodyErr(err.message,res)}
                     logger.error(err)
                     return serverErrorResponse(res," Server encountered error while signing in user ")
                 }

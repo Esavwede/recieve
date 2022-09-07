@@ -17,7 +17,7 @@ const Transfer = require('../../models/Transfer')
 
 // Functions 
 
-const saveTransfer = async function(tranferDetails)
+const saveTransfer = async function(transferDetails)
                     {
                         try 
                         {
@@ -40,12 +40,12 @@ const runTransfer = async function(transferDetails)
             {
                const res = await flw.Transfer.initiate(transferDetails)
                var msg =  res.complete_message 
+               var status = 'success'
 
-
-                if( res.status === 'success' )
+                if( status === 'success' )
                 {
-                    const transfer_id =  res.data.id
-                    const status = res.data.status 
+                    const transfer_id =  'mock_id'
+                    const status = 'success'
                     const data = { transfer_id, status, msg } 
                     
                     return { success: true, data}
@@ -59,6 +59,8 @@ const runTransfer = async function(transferDetails)
 
 const getMerchantCanTransfer = function(merchant_balance, transfer_amount )
                 {
+                    console.log( typeof transfer_amount ) 
+                    console.log('here ogagag')
                     if( merchant_balance > transfer_amount )
                     {
                         return true 
@@ -104,7 +106,6 @@ const deductFromMerchantBalance = async function(merchant_id, currency, amount, 
                         try 
                         {
 
-                            amount = parseFloat(amount)
                             merchant_balance = parseFloat(merchant_balance) 
 
                             const deductAmount = merchant_balance - amount 
@@ -113,6 +114,7 @@ const deductFromMerchantBalance = async function(merchant_id, currency, amount, 
                             const update = { $set:{ "wallets.$[elemX].balance": deductAmount } } 
                             const balance_updated = await MerchantBalance.updateOne({ merchant_id },update,arrayFilters)
                             
+                            logger.info(' Amount deducted from merchant balance ')
                             return balance_updated 
                         }
                         catch(err)
@@ -294,7 +296,7 @@ const transfer = async function(req, res, next)
                 const merchant_id = '62cb40005db61fb61b246905' 
 
                 
-                const currentTranferDetails = {  source_currency, account_bank, account_number, amount, narration, currency}
+               
 
                 // Validate Account Details Schema 
                 const transferDetails = 
@@ -305,7 +307,6 @@ const transfer = async function(req, res, next)
                     narration,
                     currency,
                     reference: 'merchantreg0293039_PMCK',
-                    callback_url: "https://webhook.site/b3e505b0-fe02-430e-a538-22bbbce8ce0d",
                     debit_currency: "NGN"
                 }
 
@@ -316,6 +317,9 @@ const transfer = async function(req, res, next)
 
                 const total_amount = await getTransferAmount(amount, currency, source_currency)
                 logger.info(` total amount : ${ total_amount }`)
+
+
+                const currentTranferDetails = {  source_currency, source_amount: total_amount.toString(), account_bank, account_number, amount, narration, currency}
 
 
                 const merchant_balance = await getMerchantBalance(merchant_id,source_currency) 
@@ -345,7 +349,7 @@ const transfer = async function(req, res, next)
                                 else 
                                 {
                                     // check status 
-                                    var mock_transfer_status = 'NEW'
+                                    var mock_transfer_status = 'SUCCESSFUL' 
                                     const transferStatus = mock_transfer_status || transferResult.data.status
 
                                     console.log(` Transfer Status : ${ transferStatus }`)
@@ -398,20 +402,25 @@ const transfer = async function(req, res, next)
                                                         {
                                                             res.status(200).json({ success: true, msg:" transfer complete "})
                                                         }
+                                                        else 
+                                                        {
                                                             res.status(200).json({ success: false, msg:"error occured while saving new transfer details "})
+                                                        }
+                                                           
                                                         // deduct from balance 
                                                         
                                                        const balanceUpdated =  await deductFromMerchantBalance(merchant_id, source_currency, total_amount, merchant_balance)
                                                        if( balanceUpdated )
                                                        {
-                                                            return res.status(200).json({ "success":  true, "msg":" transfer successful and balance updated "})
+                                                            logger.info(' Balance Updated successfully ')
                                                        } 
+                                                       return 
 
                                         default:
                                                         logger.info(' Unknown Transfer Status ')
                                                         logger.info(` Transfer Status : ${ transferStatus }`)
                                     }
-                              
+                                    
                                 }
 
                                 return res.status(200).json({ success: true, msg:" balance sufficient" })

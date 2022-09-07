@@ -48,7 +48,12 @@ const authenticateUser = async function(email,password)
                          var { firstname, lastname, email, emailVerified, _id } = user  
                          const accessToken = await jwt.sign({ firstname, lastname, email, emailVerified, _id },process.env.SIGNIN_ACCESS_TOKEN_SECRET,{ expiresIn:'3d'})
                          
-                         const userData = { accessToken, firstname, lastname, email, emailVerified, _id } 
+                         const accessTokenKey = store.count + 1 
+                         store[`${accessTokenKey}`] = accessToken 
+                         
+                         console.log( store ) 
+                         
+                         const userData = { accessTokenKey, firstname, lastname, email, emailVerified, _id } 
                          return { success: true, "msg":"user successfully authorized", statusCode: 200, userData }
 
                       }

@@ -15,7 +15,7 @@ This endpoint allows user to update their payment link
 ###### REQUEST BODY 
 ```javascript 
 {
-// user can only update allowed fields 
+// enter properties to update here 
     "amount": 50000,
 }
 ```
